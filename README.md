@@ -80,8 +80,6 @@ Also make sure that you have updated full path for private key file in hosts fil
 
 So any time we make changes to the repo https://github.com/jisjo/Dockerizing-a-Python-web-app.git an automatic build will be started.
 
-![image](https://github.com/Jisjo/CICD_docker_webapp/blob/main/img/27.png)
-
 Result
 
 ![image](https://github.com/Jisjo/CICD_docker_webapp/blob/main/img/28.png)
