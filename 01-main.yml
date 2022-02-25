@@ -1,0 +1,89 @@
+---
+- name: "Docker Image Build - From Github and PUSH to Dockerhub"
+  hosts: Build
+  become: true
+  vars:
+    repo_url: "https://github.com/jisjo/Dockerizing-a-Python-web-app.git"
+    docker_username: "jisjo"
+    docker_password: "*****"
+    image_name: "jisjo/build-flaskapp"
+    repo_dest: "/var/flaskapp"
+  tasks:
+    - name: "Installing Docker and required packages"
+      yum:
+        name:
+          - docker
+          - git
+          - python-pip
+        state: present
+    - name: "Installing python docker extension"
+      pip:
+        name: docker-py
+        state: present
+    - name: "Restarting docker service"
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+    - name: "Cloning git repository"
+      git:
+        repo: "{{ repo_url}}"
+        dest: "{{ repo_dest}}"
+      register: git_status
+    - name: "Log into Dockerhub"
+      when: git_status.changed == true
+      docker_login:
+        username: "{{ docker_username }}"
+        password: "{{ docker_password }}"
+    - name: "Building and Pushing image"
+      when: git_status.changed == true
+      docker_image:
+        source: build
+        build:
+          path: "{{ repo_dest }}"
+          pull: yes
+        name: "{{ image_name }}"
+        tag: "{{ item }}"
+        push: true
+      with_items:
+        - latest
+        - "{{ git_status.after }}"
+    - name: "Removing Images"
+      docker_image:
+        name: "{{ image_name }}"
+        tag: "{{ item }}"
+        state: absent
+      with_items:
+        - latest
+        - "{{ git_status.after }}"
+
+- name: "Docker RUN container"
+  hosts: Test
+  become: true
+  vars:
+    image_name: "jisjo/build-flaskapp"
+  tasks:
+    - name: "Instaling Docker"
+      shell: "amazon-linux-extras install docker -y"
+      args:
+        warn: no
+    - name: "Starting Docker deamon"
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+    - name: "Installing Additional Packages"
+      yum:
+        name: python-pip
+        state: present
+    - name: "Installing Docker-Python extension"
+      pip:
+        name: docker-py
+        state: present
+    - name: "Run container"
+      docker_container:
+        name: flaskapp
+        image: "{{ image_name }}"
+        pull: yes
+        recreate: yes
+        published_ports: 80:5000
